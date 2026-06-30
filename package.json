@@ -1,0 +1,12 @@
+{
+  "name": "posture-assistant-app",
+  "version": "2.0.0",
+  "description": "Fullstack Posture Assistant - Cloudflare Pages Edition",
+  "scripts": {
+    "dev": "npx wrangler pages dev public --binding POSTURE_KV=posture-kv",
+    "deploy": "npx wrangler pages deploy public"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}

@@ -18,36 +18,40 @@ let lastLogTime = 0;
 const PERSISTENCE_THRESHOLD = 1500; // 1.5s
 const LOG_COOLDOWN = 5000; // Log at most every 5s to avoid spamming server
 
+// ====== 语音提示相关 ======
+// 警告语音冷却时间（避免频繁播放），单位毫秒
+const WARNING_AUDIO_COOLDOWN = 15000; // 15秒内不重复播放警告
+let lastWarningAudioTime = 0;
+
+// 连续正确坐姿计时
+const GOOD_POSTURE_TARGET = 3 * 60 * 1000; // 3分钟 = 180000毫秒
+let goodPostureStartTime = null;       // 连续正确坐姿的开始时间
+let praiseTriggered = false;           // 本轮3分钟表扬是否已触发（避免重复）
+
 async function init() {
     if (window.lucide) window.lucide.createIcons();
-
     ui = new UIController();
     detector = new PostureDetector();
 
     // Ensure FaceMesh is loaded
     if (typeof FaceMesh === 'undefined') {
         console.error("FaceMesh not found. Waiting...");
-        // Fallback or retry logic could go here
     }
 
     faceMesh = new FaceMesh({
         locateFile: (file) => {
-            // Use CDN for assets since we don't have them locally
             return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
         }
     });
-
     faceMesh.setOptions({
         maxNumFaces: 1,
         refineLandmarks: true,
         minDetectionConfidence: 0.5,
         minTrackingConfidence: 0.5
     });
-
     faceMesh.onResults(onResults);
 
     // Initialize Camera
-    // Assuming Camera is global from camera_utils.js
     camera = new Camera(videoElement, {
         onFrame: async () => {
             await faceMesh.send({ image: videoElement });
@@ -55,7 +59,6 @@ async function init() {
         width: 1280,
         height: 720
     });
-
     camera.start().then(() => {
         if (loadingOverlay) {
             loadingOverlay.style.opacity = '0';
@@ -64,10 +67,12 @@ async function init() {
     });
 
     calibrateBtn.addEventListener('click', () => {
-        // Trigger calibration in detector
         detector.calibrate();
         ui.notify("Baseline calibrated", "success");
-        badPostureStartTime = null; // Reset
+        badPostureStartTime = null;
+        goodPostureStartTime = null;  // 校准时重置正确坐姿计时
+        praiseTriggered = false;
+        ui.hideGoodPostureTimer();
     });
 }
 
@@ -90,25 +95,58 @@ function onResults(results) {
 
         // Analyze Posture
         const status = detector.analyze(landmarks);
+        const now = Date.now();
 
         // Update Metrics UI immediately
         ui.updateMetrics(status);
 
-        // Handle persistence logic for Alert
-        const now = Date.now();
+        // ====== 姿势判断与语音提示逻辑 ======
         if (status.isBadPosture) {
+            // --- 不良姿势 ---
             if (!badPostureStartTime) {
                 badPostureStartTime = now;
             } else if (now - badPostureStartTime > PERSISTENCE_THRESHOLD) {
-                // Bad posture persisted
+                // 不良姿势持续超过1.5秒 → 触发视觉警告
                 ui.handleAlert(true, status.message);
+
+                // 播放警告语音（带冷却，避免频繁播放）
+                if (now - lastWarningAudioTime > WARNING_AUDIO_COOLDOWN) {
+                    lastWarningAudioTime = now;
+                    ui.playAudio('warning');
+                }
 
                 // Log to backend
                 logPostureIfNeeded(status.message);
             }
+
+            // 不良姿势 → 重置正确坐姿计时
+            goodPostureStartTime = null;
+            praiseTriggered = false;
+            ui.hideGoodPostureTimer();
+
         } else {
+            // --- 正确姿势 ---
             badPostureStartTime = null;
             ui.handleAlert(false);
+
+            // 开始/继续正确坐姿计时
+            if (!goodPostureStartTime) {
+                goodPostureStartTime = now;
+            }
+
+            const goodDuration = now - goodPostureStartTime;
+
+            // 显示正确坐姿进度
+            ui.showGoodPostureTimer(goodDuration, GOOD_POSTURE_TARGET);
+
+            // 达到3分钟且本轮未表扬过 → 播放表扬语音
+            if (goodDuration >= GOOD_POSTURE_TARGET && !praiseTriggered) {
+                praiseTriggered = true;
+                ui.playAudio('praise');
+                ui.notify("🎉 太棒了！正确坐姿保持3分钟！", "success");
+                // 表扬后重置计时，可以再次触发下一轮3分钟表扬
+                goodPostureStartTime = now;
+            }
         }
     }
 
@@ -119,7 +157,6 @@ function logPostureIfNeeded(message) {
     const now = Date.now();
     if (now - lastLogTime > LOG_COOLDOWN) {
         lastLogTime = now;
-
         // Fire and forget
         fetch('/api/log', {
             method: 'POST',

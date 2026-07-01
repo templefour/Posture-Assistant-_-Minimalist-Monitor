@@ -120,3 +120,88 @@ Cloudflare Pages 免费版完全够用：
 - `lib/` 目录下的 MediaPipe 文件也需要从原项目复制
 - KV 有 eventual consistency 特性，日志写入后可能不是立即在所有节点可读，但对于这种轻量日志场景完全无影响
 - 如果需要本地开发测试，确保 `npx wrangler pages dev public` 时 KV binding 正确配置
+
+
+# 语音提示功能 - 修改说明
+
+## 修改的文件（共 4 个）
+
+### 1. `public/index.html`
+**新增内容：**
+- 右上角添加了**语音开关按钮**（🔊/🔇），点击可切换语音开启/关闭
+- 右侧面板添加了**绿色进度条**，实时显示正确坐姿累积时间（0:00 → 3:00）
+- 页面底部添加了 **3 个 `<audio>` 元素**：
+  - `audio/warning-slouch.mp3` — 驼背提醒
+  - `audio/warning-tilt.mp3` — 歪头提醒
+  - `audio/praise.mp3` — 3分钟表扬
+
+### 2. `public/js/detector.js`
+**修改内容：**
+- `analyze()` 返回值新增 `type` 字段：`"slouch"`（驼背）或 `"tilt"`（歪头）
+- 空返回值时 `type` 为空字符串
+
+### 3. `public/js/app.js`
+**新增逻辑：**
+- **驼背检测**：Spine Alignment 超标 1.5秒 → 播放 `warning-slouch.mp3`
+- **歪头检测**：Neck Rotation 超标 1.5秒 → 播放 `warning-tilt.mp3`
+- 警告语音 **15秒冷却**，但驼背和歪头**独立冷却**（切换类型时立即播放）
+- **正确坐姿 3 分钟** → 播放 `praise.mp3`，之后重置计时可再次触发
+- 出现不良姿势时自动重置正确坐姿计时器
+
+### 4. `public/js/ui.js`
+**新增方法：**
+- `_initAudioToggle()` / `_updateAudioToggleUI()` — 语音开关按钮交互
+- `playAudio(type)` — 根据 type 播放对应音频：`warning-slouch` / `warning-tilt` / `praise`
+- `showGoodPostureTimer(elapsed, target)` — 显示并更新正确坐姿进度条
+- `hideGoodPostureTimer()` — 隐藏进度条
+
+## 未修改的文件
+- `public/css/styles.css` — 不变
+- `server/server.js` — 不变
+- `package.json` — 不变
+- `functions/` 目录 — 不变
+
+## 你需要做的事
+
+### 1. 生成 3 个语音文件，放到 `public/audio/` 目录
+
+```
+public/
+└── audio/
+    ├── warning-slouch.mp3   ← 驼背提醒（如："小朋友，背没有挺直哦，请坐直！"）
+    ├── warning-tilt.mp3     ← 歪头提醒（如："小朋友，头歪了哦，摆正一下！"）
+    └── praise.mp3           ← 表扬语音（如："太棒了！你保持了3分钟的正确坐姿，真厉害！"）
+```
+
+**推荐用 Edge TTS 免费生成：**
+```bash
+pip install edge-tts
+
+# 驼背提醒（晓晓-少女音色）
+edge-tts --voice zh-CN-XiaoyiNeural --text "小朋友，背没有挺直哦，请坐直！" --write-media warning-slouch.mp3
+
+# 歪头提醒
+edge-tts --voice zh-CN-XiaoyiNeural --text "小朋友，头歪了哦，摆正一下！" --write-media warning-tilt.mp3
+
+# 表扬语音
+edge-tts --voice zh-CN-XiaoyiNeural --text "太棒了！你保持了3分钟的正确坐姿，真厉害！" --write-media praise.mp3
+```
+
+也可以去 https://ttsmaker.com 在线生成。
+
+### 2. 替换文件后推送到 GitHub
+
+```bash
+git add .
+git commit -m "feat: add separate voice prompts for slouch and tilt, plus 3-min praise"
+git push origin main
+```
+
+## 功能总结
+
+| 场景 | 视觉提示 | 语音提示 |
+|------|---------|---------|
+| 驼背 > 1.5秒 | 顶部红色浮动警告 | 🔊 `warning-slouch.mp3`（15秒冷却） |
+| 歪头 > 1.5秒 | 顶部红色浮动警告 | 🔊 `warning-tilt.mp3`（15秒冷却，与驼背独立计时） |
+| 正确坐姿持续 3分钟 | 绿色进度条满格 + 成功通知 | 🔊 `praise.mp3`（之后重新计时） |
+| 点击右上角语音按钮 | 按钮变灰/变蓝 | 全局静音/开启 |

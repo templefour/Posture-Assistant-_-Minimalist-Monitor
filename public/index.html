@@ -15,7 +15,7 @@
     <!-- User Styles -->
     <link rel="stylesheet" href="css/styles.css">
     
-    <!-- Tailwind CSS (via CDN as backup if vendors.js doesn't cover it fully or if it's acting weird) -->
+    <!-- Tailwind CSS (via CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -39,7 +39,6 @@
                 <p class="text-sm text-gray-500 mt-1">Intelligent Ergonomic Assistant</p>
             </div>
             <div class="flex items-center gap-3">
-                <!-- 语音开关按钮 -->
                 <button id="audio-toggle-btn" class="px-4 py-2 rounded-full bg-blue-50 text-blue-600 text-xs font-medium border border-blue-100 flex items-center gap-2 cursor-pointer hover:bg-blue-100 transition-colors" title="开启/关闭语音提示">
                     <i data-lucide="volume-2" class="w-4 h-4" id="audio-icon"></i>
                     <span id="audio-toggle-text">语音开</span>
@@ -91,7 +90,7 @@
                     </div>
                 </div>
 
-                <!-- 良好坐姿计时器显示 -->
+                <!-- 正确坐姿计时器面板（已隐藏，但保留DOM以备将来使用） -->
                 <div id="good-posture-timer" class="bg-green-50 p-4 rounded-2xl border border-green-100 hidden">
                     <div class="flex items-center gap-2 mb-2">
                         <i data-lucide="trophy" class="w-4 h-4 text-green-600"></i>

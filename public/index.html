@@ -15,7 +15,7 @@
     <!-- User Styles -->
     <link rel="stylesheet" href="css/styles.css">
     
-    <!-- Tailwind CSS (via CDN) -->
+    <!-- Tailwind CSS (via CDN as backup if vendors.js doesn't cover it fully or if it's acting weird) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -39,6 +39,7 @@
                 <p class="text-sm text-gray-500 mt-1">Intelligent Ergonomic Assistant</p>
             </div>
             <div class="flex items-center gap-3">
+                <!-- 语音开关按钮 -->
                 <button id="audio-toggle-btn" class="px-4 py-2 rounded-full bg-blue-50 text-blue-600 text-xs font-medium border border-blue-100 flex items-center gap-2 cursor-pointer hover:bg-blue-100 transition-colors" title="开启/关闭语音提示">
                     <i data-lucide="volume-2" class="w-4 h-4" id="audio-icon"></i>
                     <span id="audio-toggle-text">语音开</span>
@@ -90,19 +91,7 @@
                     </div>
                 </div>
 
-                <!-- 正确坐姿计时器面板（已隐藏，但保留DOM以备将来使用） -->
-                <div id="good-posture-timer" class="bg-green-50 p-4 rounded-2xl border border-green-100 hidden">
-                    <div class="flex items-center gap-2 mb-2">
-                        <i data-lucide="trophy" class="w-4 h-4 text-green-600"></i>
-                        <span class="text-sm font-medium text-green-700">保持正确坐姿</span>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <div class="flex-1 bg-green-100 h-2 rounded-full overflow-hidden">
-                            <div id="good-posture-bar" class="bg-green-500 h-full w-0 transition-all duration-1000"></div>
-                        </div>
-                        <span id="good-posture-time" class="font-mono text-sm text-green-700">0:00 / 3:00</span>
-                    </div>
-                </div>
+
 
                 <div class="p-6 bg-blue-50 rounded-2xl border border-blue-100">
                     <p class="text-sm text-blue-800 leading-relaxed">
@@ -124,12 +113,13 @@
     <!-- 语音提示音频 -->
     <!-- 
         请将语音文件放在 audio/ 目录下：
-        - audio/warning-slouch.mp3 : 驼背（低头）时的提醒语音
-        - audio/warning-tilt.mp3   : 歪头（旋转）时的提醒语音
-        - audio/praise.mp3         : 连续正确坐姿3分钟后的表扬语音
+        - audio/warning.mp3  : 坐姿不良时的提醒语音（如："小朋友，请坐直哦！"）
+        - audio/praise.mp3   : 连续正确坐姿3分钟后的表扬语音（如："太棒了！你保持了3分钟的正确坐姿！"）
     -->
+    <!-- 两个不同的警告音 -->
     <audio id="audio-warning-slouch" src="audio/warning-slouch.mp3" preload="auto"></audio>
-    <audio id="audio-warning-tilt" src="audio/warning-tilt.mp3" preload="auto"></audio>
+    <audio id="audio-warning-tilt"  src="audio/warning-tilt.mp3"  preload="auto"></audio>
+    <!-- 表扬音 -->
     <audio id="audio-praise" src="audio/praise.mp3" preload="auto"></audio>
 
     <!-- Application Logic -->
